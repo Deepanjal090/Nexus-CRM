@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+
+:root {
+  /* Bitrix24 Inspired Schema */
+  --primary: #00aaff; /* Bitrix Blue */
+  --primary-hover: #0099ee;
+  --sidebar-bg: #2b3542;
+  --topbar-bg: #3e4954;
+  --content-bg: #f0f2f5;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #333333;
+  --text-muted: #666666;
+  --success: #00c853;
+  --error: #ff5252;
+  
+  --sidebar-width: 260px;
+  --topbar-height: 60px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Outfit', sans-serif;
+}
+
+body {
+  background-color: var(--content-bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* Kanban Chevron Header Utility */
+.kanban-chevron {
+  position: relative;
+  padding-left: 20px;
+  padding-right: 25px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  color: white;
+  font-weight: 700;
+  font-size: 12px;
+  clip-path: polygon(0% 0%, 90% 0%, 100% 50%, 90% 100%, 0% 100%, 10% 50%);
+}
+
+.kanban-chevron-first {
+  clip-path: polygon(0% 0%, 90% 0%, 100% 50%, 90% 100%, 0% 100%);
+  padding-left: 15px;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 10px;
+}

@@ -1,0 +1,754 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NEXUS — Prisma Schema (All Models)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── Auth & Users ──────────────────────────
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  name            String
+  avatar          String?
+  passwordHash    String?
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret String?
+  emailVerified   Boolean   @default(false)
+  emailVerifyToken String?
+  passwordResetToken String?
+  passwordResetExpiry DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  refreshTokens   RefreshToken[]
+  workspaces      WorkspaceMember[]
+  activities      Activity[]
+  messages        Message[]
+  reactions       Reaction[]
+  timeLogs        TimeLog[]
+  notifications   Notification[]
+  employee        Employee?
+
+  createdTasks    Task[]       @relation("TaskCreator")
+  assignedTasks   TaskAssignee[]
+  createdProjects Project[]    @relation("ProjectOwner")
+  projectMembers  ProjectMember[]
+  channelMembers  ChannelMember[]
+  uploadedFiles   DriveFile[]  @relation("FileUploader")
+  createdFolders  DriveFolder[] @relation("FolderCreator")
+  fileVersions    FileVersion[]
+  readReceipts    ReadReceipt[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// ─── Workspace ─────────────────────────────
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  plan      String   @default("FREE")
+  timezone  String   @default("UTC")
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members       WorkspaceMember[]
+  leads         Lead[]
+  deals         Deal[]
+  contacts      Contact[]
+  companies     Company[]
+  pipelines     Pipeline[]
+  activities    Activity[]
+  tasks         Task[]
+  projects      Project[]
+  channels      Channel[]
+  driveFolders  DriveFolder[]
+  driveFiles    DriveFile[]
+  departments   Department[]
+  employees     Employee[]
+  workflows     Workflow[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  webhooks      Webhook[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   @default("MEMBER")
+  joinedAt    DateTime @default(now())
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// ─── CRM ───────────────────────────────────
+
+model Lead {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title        String
+  status       String    @default("NEW")
+  source       String?
+  score        Int       @default(0)
+  assigneeId   String?
+  customFields Json?
+  convertedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([workspaceId, status])
+  @@map("leads")
+}
+
+model Deal {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title        String
+  value        Float     @default(0)
+  currency     String    @default("USD")
+  stageId      String
+  stage        PipelineStage @relation(fields: [stageId], references: [id])
+  pipelineId   String
+  pipeline     Pipeline  @relation(fields: [pipelineId], references: [id])
+  probability  Float     @default(0)
+  assigneeId   String?
+  companyId    String?
+  company      Company?  @relation(fields: [companyId], references: [id])
+  closeDate    DateTime?
+  customFields Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  contacts     DealContact[]
+  activities   Activity[]   @relation("DealActivities")
+  invoices     Invoice[]
+
+  @@index([workspaceId, pipelineId])
+  @@index([workspaceId, stageId])
+  @@map("deals")
+}
+
+model DealContact {
+  dealId    String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, contactId])
+  @@map("deal_contacts")
+}
+
+model Contact {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  companyId    String?
+  company      Company?  @relation(fields: [companyId], references: [id])
+  customFields Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  deals        DealContact[]
+  activities   Activity[]  @relation("ContactActivities")
+
+  @@index([workspaceId])
+  @@index([workspaceId, email])
+  @@map("contacts")
+}
+
+model Company {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name         String
+  industry     String?
+  size         String?
+  website      String?
+  customFields Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  contacts     Contact[]
+  deals        Deal[]
+
+  @@index([workspaceId])
+  @@map("companies")
+}
+
+model Pipeline {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  stages      PipelineStage[]
+  deals       Deal[]
+
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id          String   @id @default(uuid())
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  name        String
+  order       Int
+  probability Float    @default(0)
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  deals       Deal[]
+
+  @@map("pipeline_stages")
+}
+
+model Activity {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type        String
+  subject     String
+  body        String?
+  dueAt       DateTime?
+  completedAt DateTime?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  contactId   String?
+  contact     Contact?  @relation("ContactActivities", fields: [contactId], references: [id])
+  dealId      String?
+  deal        Deal?     @relation("DealActivities", fields: [dealId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@map("activities")
+}
+
+model Invoice {
+  id        String   @id @default(uuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  number    String
+  status    String   @default("DRAFT")
+  subtotal  Float    @default(0)
+  tax       Float    @default(0)
+  total     Float    @default(0)
+  dueDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items     InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float   @default(0)
+  total       Float   @default(0)
+
+  @@map("invoice_items")
+}
+
+// ─── Tasks & Projects ─────────────────────
+
+model Task {
+  id             String    @id @default(uuid())
+  workspaceId    String
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  status         String    @default("TODO")
+  priority       String    @default("MEDIUM")
+  projectId      String?
+  project        Project?  @relation(fields: [projectId], references: [id])
+  sprintId       String?
+  sprint         Sprint?   @relation(fields: [sprintId], references: [id])
+  dueDate        DateTime?
+  startDate      DateTime?
+  estimatedHours Float?
+  loggedHours    Float     @default(0)
+  parentId       String?
+  parent         Task?     @relation("TaskSubtasks", fields: [parentId], references: [id])
+  subtasks       Task[]    @relation("TaskSubtasks")
+  tags           String    @default("[]")
+  customFields   Json?
+  recurrence     Json?
+  createdById    String
+  createdBy      User      @relation("TaskCreator", fields: [createdById], references: [id])
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  assignees      TaskAssignee[]
+  dependencies   TaskDependency[] @relation("TaskDependent")
+  dependedOnBy   TaskDependency[] @relation("TaskDependency")
+  timeLogs       TimeLog[]
+  comments       TaskComment[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, projectId])
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@map("task_assignees")
+}
+
+model TaskDependency {
+  id             String @id @default(uuid())
+  taskId         String
+  task           Task   @relation("TaskDependent", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnId    String
+  dependsOn      Task   @relation("TaskDependency", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  type           String @default("FINISH_TO_START")
+
+  @@unique([taskId, dependsOnId])
+  @@map("task_dependencies")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("task_comments")
+}
+
+model TimeLog {
+  id        String    @id @default(uuid())
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  startedAt DateTime
+  endedAt   DateTime?
+  minutes   Int       @default(0)
+  note      String?
+  createdAt DateTime  @default(now())
+
+  @@map("time_logs")
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String    @default("#6366f1")
+  icon        String?
+  status      String    @default("PLANNING")
+  budget      Float?
+  ownerId     String
+  owner       User      @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  members     ProjectMember[]
+  milestones  Milestone[]
+  sprints     Sprint[]
+  tasks       Task[]
+
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+model ProjectMember {
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String  @default("MEMBER")
+
+  @@id([projectId, userId])
+  @@map("project_members")
+}
+
+model Milestone {
+  id               String    @id @default(uuid())
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name             String
+  dueDate          DateTime?
+  completionPercent Float    @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("milestones")
+}
+
+model Sprint {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("PLANNED")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks     Task[]
+
+  @@map("sprints")
+}
+
+// ─── Chat ──────────────────────────────────
+
+model Channel {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  type        String    @default("PUBLIC")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  members     ChannelMember[]
+  messages    Message[]
+
+  @@index([workspaceId])
+  @@map("channels")
+}
+
+model ChannelMember {
+  channelId    String
+  channel      Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt     DateTime @default(now())
+  lastReadAt   DateTime @default(now())
+  muted        Boolean  @default(false)
+  notification String   @default("ALL")
+
+  @@id([channelId, userId])
+  @@map("channel_members")
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  channelId   String
+  channel     Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  content     String
+  richContent Json?
+  attachments String    @default("[]")
+  threadId    String?
+  replyToId   String?
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  reactions    Reaction[]
+  readReceipts ReadReceipt[]
+
+  @@index([channelId, createdAt])
+  @@map("messages")
+}
+
+model Reaction {
+  id        String @id @default(uuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
+  emoji     String
+
+  @@unique([messageId, userId, emoji])
+  @@map("reactions")
+}
+
+model ReadReceipt {
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  readAt    DateTime @default(now())
+
+  @@id([messageId, userId])
+  @@map("read_receipts")
+}
+
+// ─── Drive ─────────────────────────────────
+
+model DriveFolder {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  parentId    String?
+  parent      DriveFolder?  @relation("FolderTree", fields: [parentId], references: [id])
+  children    DriveFolder[] @relation("FolderTree")
+  permissions Json?
+  createdById String
+  createdBy   User      @relation("FolderCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  files       DriveFile[]
+
+  @@index([workspaceId, parentId])
+  @@map("drive_folders")
+}
+
+model DriveFile {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      DriveFolder? @relation(fields: [folderId], references: [id])
+  name        String
+  mimeType    String
+  size        Int
+  storageKey  String
+  uploadedById String
+  uploadedBy  User      @relation("FileUploader", fields: [uploadedById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  versions    FileVersion[]
+  sharedLinks SharedLink[]
+  comments    FileComment[]
+
+  @@index([workspaceId, folderId])
+  @@map("drive_files")
+}
+
+model FileVersion {
+  id          String   @id @default(uuid())
+  fileId      String
+  file        DriveFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  storageKey  String
+  size        Int
+  uploadedById String
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("file_versions")
+}
+
+model SharedLink {
+  id        String    @id @default(uuid())
+  fileId    String
+  file      DriveFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("shared_links")
+}
+
+model FileComment {
+  id        String   @id @default(uuid())
+  fileId    String
+  file      DriveFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  authorId  String
+  content   String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("file_comments")
+}
+
+// ─── HR ────────────────────────────────────
+
+model Employee {
+  id           String    @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id])
+  departmentId String?
+  department   Department? @relation("DeptEmployees", fields: [departmentId], references: [id])
+  managerId    String?
+  manager      Employee?  @relation("ManagerReports", fields: [managerId], references: [id])
+  reports      Employee[] @relation("ManagerReports")
+  jobTitle     String
+  startDate    DateTime
+  skills       String     @default("[]")
+  bio          String?
+  schedule     Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  absences     Absence[]
+  headOf       Department[] @relation("DeptHead")
+
+  @@index([workspaceId])
+  @@map("employees")
+}
+
+model Department {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  headId      String?
+  head        Employee? @relation("DeptHead", fields: [headId], references: [id])
+  parentId    String?
+  parent      Department?  @relation("DeptTree", fields: [parentId], references: [id])
+  children    Department[] @relation("DeptTree")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employees   Employee[] @relation("DeptEmployees")
+
+  @@index([workspaceId])
+  @@map("departments")
+}
+
+model Absence {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       String
+  startDate  DateTime
+  endDate    DateTime
+  status     String   @default("PENDING")
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("absences")
+}
+
+// ─── Automation ────────────────────────────
+
+model Workflow {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  trigger     Json
+  nodes       Json?
+  edges       Json?
+  active      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  executions  WorkflowExecution[]
+
+  @@index([workspaceId])
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String    @id @default(uuid())
+  workflowId  String
+  workflow    Workflow   @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  status      String    @default("RUNNING")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  log         Json?
+
+  @@map("workflow_executions")
+}
+
+// ─── Notifications ─────────────────────────
+
+model Notification {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  body        String?
+  read        Boolean   @default(false)
+  link        String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, read])
+  @@index([workspaceId])
+  @@map("notifications")
+}
+
+// ─── System ────────────────────────────────
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@map("audit_logs")
+}
+
+model Webhook {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  url         String
+  events      String    @default("[]")
+  secret      String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("webhooks")
+}
