@@ -4,7 +4,7 @@ import {
   Bell, Search, Menu, User, 
   HelpCircle, Settings, Command, Globe, 
   MessageSquare, Briefcase, Zap, Plus,
-  ShieldCheck, LayoutGrid, Users, Package, ChevronDown, Send
+  ShieldCheck, LayoutGrid, Users, Package, ChevronDown, Send, Clock
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 

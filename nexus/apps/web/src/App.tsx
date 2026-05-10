@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router';
 import { AnimatePresence } from 'framer-motion';
-import { useAppSelector } from './store/store';
+import { useAppSelector, useAppDispatch } from './store/store';
+import { setWorkspace } from './store/authSlice';
+import api from './lib/api';
 import AppShell from './components/layout/AppShell';
 import LoginPage from './modules/auth/pages/LoginPage';
 import RegisterPage from './modules/auth/pages/RegisterPage';
@@ -22,8 +25,28 @@ import NotificationsPage from './modules/notifications/pages/NotificationsPage';
 import UsersPage from './modules/crm/pages/UsersPage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, workspaceSlug } = useAppSelector((s) => s.auth);
+  const [hydrating, setHydrating] = useState(false);
+
+  useEffect(() => {
+    // If authenticated but workspaceSlug missing, fetch it from the API
+    if (isAuthenticated && !workspaceSlug) {
+      setHydrating(true);
+      api.get('/workspaces')
+        .then((res) => {
+          const workspaces = res.data?.data || res.data;
+          if (Array.isArray(workspaces) && workspaces.length > 0) {
+            dispatch(setWorkspace(workspaces[0].slug));
+          }
+        })
+        .catch(() => {/* handled by api interceptor */})
+        .finally(() => setHydrating(false));
+    }
+  }, [isAuthenticated, workspaceSlug, dispatch]);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (hydrating) return <div className="flex items-center justify-center h-screen bg-[#f0f2f5]"><div className="w-10 h-10 border-4 border-[#00aaff]/30 border-t-[#00aaff] rounded-full animate-spin" /></div>;
   return <>{children}</>;
 }
 
@@ -59,6 +82,11 @@ export default function App() {
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
+                  
+                  {/* Sidebar Placeholders */}
+                  <Route path="/calendar" element={<div className="flex items-center justify-center h-full text-slate-400 font-bold text-xl">Calendar (Coming Soon)</div>} />
+                  <Route path="/mail" element={<div className="flex items-center justify-center h-full text-slate-400 font-bold text-xl">Webmail (Coming Soon)</div>} />
+                  <Route path="/twilio" element={<div className="flex items-center justify-center h-full text-slate-400 font-bold text-xl">Twilio Hub (Coming Soon)</div>} />
                 </Routes>
               </AppShell>
             </AuthGuard>

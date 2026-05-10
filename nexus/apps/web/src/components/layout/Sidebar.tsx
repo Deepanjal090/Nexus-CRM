@@ -39,6 +39,12 @@ export default function Sidebar({ isMobile }: { isMobile: boolean }) {
 
   const navGroups: NavGroup[] = [
     {
+      title: 'Main',
+      items: [
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+      ]
+    },
+    {
       title: 'CRM',
       items: [
         { label: 'Leads', icon: Activity, path: '/crm/leads' },

@@ -26,7 +26,7 @@ export function useDashboardController() {
         setStatsData(stats);
         setTeamMembers(team.map((m: any) => ({
           id: m.userId,
-          name: m.user.name,
+          name: m.user?.name || 'Unknown',
         })));
       } catch (err) {
         console.error('Failed to fetch dashboard data', err);

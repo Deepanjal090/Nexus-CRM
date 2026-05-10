@@ -19,14 +19,20 @@ export default function LeadsPage() {
     teamMembers,
     search,
     setSearch,
-    newLeadModalOpen,
-    setNewLeadModalOpen,
+    isLoading,
     handleExport,
     handleCreateLead,
     handleConvertLead,
   } = useLeadsController();
 
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [newLeadModalOpen, setNewLeadModalOpen] = useState<{ open: boolean; defaultStage?: string }>({ open: false });
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="w-10 h-10 border-4 border-[#00aaff]/30 border-t-[#00aaff] rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col relative space-y-6">
@@ -183,12 +189,14 @@ export default function LeadsPage() {
         <form onSubmit={async (e) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
-          await handleCreateLead({
+          const defaultStage = stages.find(s => s.name === newLeadModalOpen.defaultStage) || stages[0];
+          const success = await handleCreateLead({
             title: formData.get('title') as string,
             contact: formData.get('contact') as string,
             company: formData.get('company') as string,
-            stageName: newLeadModalOpen.defaultStage || stages[0].name
+            stageId: defaultStage?.id,
           });
+          if (success) setNewLeadModalOpen({ open: false });
         }} className="space-y-4 pt-4">
           <input name="title" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Lead Title" />
           <input name="contact" required className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm" placeholder="Contact Name" />

@@ -26,15 +26,19 @@ export function useDealsController() {
           api.get(`/workspaces/${workspaceSlug}/dashboard/team`),
         ]);
 
-        setDeals(dealsRes.data);
+        const dealsData = dealsRes.data?.data || dealsRes.data || [];
+        const stagesData = stagesRes.data?.data || stagesRes.data || [];
+        const teamData = teamRes.data?.data || teamRes.data || [];
+
+        setDeals(dealsData);
         // Find the default pipeline and its stages
-        const defaultPipeline = stagesRes.data[0];
+        const defaultPipeline = stagesData[0];
         if (defaultPipeline) {
-          setStages(defaultPipeline.stages);
+          setStages(defaultPipeline.stages || []);
         }
-        setTeamMembers(teamRes.data.map((m: any) => ({
+        setTeamMembers(teamData.map((m: any) => ({
           id: m.userId,
-          name: m.user.name,
+          name: m.user?.name || 'Unknown',
         })));
       } catch (err) {
         console.error('Failed to fetch CRM data', err);
