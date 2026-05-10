@@ -1,45 +1,88 @@
-import { useState } from 'react';
-
-const channels = [
-  { name: 'general', type: 'PUBLIC', unread: 3 },
-  { name: 'engineering', type: 'PUBLIC', unread: 0 },
-  { name: 'design', type: 'PUBLIC', unread: 1 },
-  { name: 'sales', type: 'PRIVATE', unread: 0 },
-  { name: 'random', type: 'PUBLIC', unread: 5 },
-];
-
-const initialMessages = [
-  { author: 'Sarah Chen', avatar: 'S', content: 'Hey team, just pushed the new dashboard design to staging. Let me know what you think!', time: '10:30 AM' },
-  { author: 'Alex Rivera', avatar: 'A', content: 'Looks great! The KPI cards animation is really smooth. One thing — can we make the sidebar transition a bit faster?', time: '10:32 AM' },
-  { author: 'Mike Johnson', avatar: 'M', content: 'Agreed on the sidebar. Also, the search bar Cmd+K shortcut isn\'t working on Firefox. I\'ll file a bug.', time: '10:35 AM' },
-  { author: 'Emily Park', avatar: 'E', content: 'I\'ll handle the Firefox fix. Should be a quick one — probably a keyboard event issue.', time: '10:38 AM' },
-  { author: 'Sarah Chen', avatar: 'S', content: 'Perfect. Let\'s also plan the chat module review for tomorrow. I\'ll send a calendar invite.', time: '10:42 AM' },
-];
+import { useState, useEffect, useMemo } from 'react';
+import { useAppSelector } from '@/store/store';
+import { ChatService } from '../services/chat.service';
 
 export function useChatController() {
-  const [messages, setMessages] = useState(initialMessages);
+  const { workspaceSlug } = useAppSelector((s) => s.auth);
+  const [channels, setChannels] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
-  const [activeChannel, setActiveChannel] = useState('general');
+  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return;
-    const newMessage = {
-      author: 'You',
-      avatar: 'Y',
-      content: input,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  const chatService = useMemo(() => workspaceSlug ? new ChatService(workspaceSlug) : null, [workspaceSlug]);
+
+  useEffect(() => {
+    if (!chatService) return;
+
+    const fetchChannels = async () => {
+      try {
+        const data = await chatService.getChannels();
+        setChannels(data);
+        if (data.length > 0 && !activeChannelId) {
+          setActiveChannelId(data[0].id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch channels', err);
+      } finally {
+        setLoading(false);
+      }
     };
-    setMessages([...messages, newMessage]);
-    setInput('');
+
+    fetchChannels();
+  }, [chatService]);
+
+  useEffect(() => {
+    if (!chatService || !activeChannelId) return;
+
+    const fetchMessages = async () => {
+      try {
+        const data = await chatService.getMessages(activeChannelId);
+        setMessages(data.map((m: any) => ({
+          author: m.author?.name || 'Unknown',
+          avatar: m.author?.name?.charAt(0) || 'U',
+          content: m.content,
+          time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        })));
+      } catch (err) {
+        console.error('Failed to fetch messages', err);
+      }
+    };
+
+    fetchMessages();
+    // In a real app, we would subscribe to WebSockets here
+  }, [chatService, activeChannelId]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || !chatService || !activeChannelId) return;
+    
+    try {
+      const msg = await chatService.sendMessage(activeChannelId, input);
+      setMessages([...messages, {
+        author: 'You',
+        avatar: 'Y',
+        content: input,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }]);
+      setInput('');
+    } catch (err) {
+      console.error('Failed to send message', err);
+    }
   };
+
+  const activeChannelName = channels.find(c => c.id === activeChannelId)?.name || 'general';
 
   return {
     channels,
     messages,
     input,
     setInput,
-    activeChannel,
-    setActiveChannel,
+    activeChannel: activeChannelName,
+    setActiveChannel: (name: string) => {
+      const ch = channels.find(c => c.name === name);
+      if (ch) setActiveChannelId(ch.id);
+    },
     handleSendMessage,
+    loading,
   };
 }

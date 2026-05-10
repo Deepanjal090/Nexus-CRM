@@ -17,11 +17,12 @@ export function useUsersController() {
     const fetchUsers = async () => {
       try {
         const res = await api.get(`/workspaces/${workspaceSlug}/hr/employees`);
-        setUsers(res.data.map((e: any) => ({
-          id: e.user.id,
-          name: e.user.name,
-          email: e.user.email,
-          role: e.user.role || 'EMPLOYEE',
+        const data = res.data?.data || res.data || [];
+        setUsers(data.map((e: any) => ({
+          id: e.user?.id,
+          name: e.user?.name || 'Unknown',
+          email: e.user?.email || 'N/A',
+          role: e.user?.role || 'EMPLOYEE',
           department: e.department?.name || 'Unassigned',
           status: e.status || 'ACTIVE',
         })));
@@ -51,12 +52,13 @@ export function useUsersController() {
       });
       setInviteModalOpen(false);
       // Refresh list
-      const res = await api.get(`/workspaces/${workspaceSlug}/hr/employees`);
-      setUsers(res.data.map((e: any) => ({
-        id: e.user.id,
-        name: e.user.name,
-        email: e.user.email,
-        role: e.user.role || 'EMPLOYEE',
+      const refreshRes = await api.get(`/workspaces/${workspaceSlug}/hr/employees`);
+      const refreshData = refreshRes.data?.data || refreshRes.data || [];
+      setUsers(refreshData.map((e: any) => ({
+        id: e.user?.id,
+        name: e.user?.name || 'Unknown',
+        email: e.user?.email || 'N/A',
+        role: e.user?.role || 'EMPLOYEE',
         department: e.department?.name || 'Unassigned',
         status: e.status || 'ACTIVE',
       })));

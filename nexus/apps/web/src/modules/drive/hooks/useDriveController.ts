@@ -1,29 +1,51 @@
-import { useState } from 'react';
-import { Folder, Image, FileText, Film } from 'lucide-react';
-
-const mockFolders = [
-  { id: 'f1', name: 'Marketing Assets', items: 24, color: '#3b82f6' },
-  { id: 'f2', name: 'Engineering Docs', items: 18, color: '#6366f1' },
-  { id: 'f3', name: 'Design System', items: 12, color: '#ec4899' },
-  { id: 'f4', name: 'Contracts', items: 7, color: '#f59e0b' },
-];
-
-const mockFiles = [
-  { id: '1', name: 'brand-guidelines.pdf', type: 'pdf', size: '2.4 MB', modified: 'May 8, 2026', icon: FileText },
-  { id: '2', name: 'product-screenshot.png', type: 'image', size: '1.8 MB', modified: 'May 7, 2026', icon: Image },
-  { id: '3', name: 'demo-video.mp4', type: 'video', size: '48 MB', modified: 'May 5, 2026', icon: Film },
-  { id: '4', name: 'Q2-report.pdf', type: 'pdf', size: '3.1 MB', modified: 'May 4, 2026', icon: FileText },
-];
+import { useState, useEffect, useMemo } from 'react';
+import { useAppSelector } from '@/store/store';
+import { Folder, Image, FileText, Film, File } from 'lucide-react';
+import { DriveService } from '../services/drive.service';
 
 export function useDriveController() {
-  const [folders, setFolders] = useState(mockFolders);
-  const [files, setFiles] = useState(mockFiles);
+  const { workspaceSlug } = useAppSelector((s) => s.auth);
+  const [folders, setFolders] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [loading, setLoading] = useState(true);
+
+  const driveService = useMemo(() => workspaceSlug ? new DriveService(workspaceSlug) : null, [workspaceSlug]);
+
+  useEffect(() => {
+    if (!driveService) return;
+
+    const fetchData = async () => {
+      try {
+        const [foldersData, filesData] = await Promise.all([
+          driveService.getFolders(),
+          driveService.getFiles(),
+        ]);
+
+        setFolders(foldersData);
+        setFiles(filesData.map((f: any) => ({
+          ...f,
+          icon: f.type === 'pdf' ? FileText : 
+                f.type === 'image' ? Image : 
+                f.type === 'video' ? Film : File,
+          modified: new Date(f.updatedAt).toLocaleDateString(),
+          size: (f.size / (1024 * 1024)).toFixed(1) + ' MB',
+        })));
+      } catch (err) {
+        console.error('Failed to fetch drive data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [driveService]);
 
   return {
     folders,
     files,
     viewMode,
     setViewMode,
+    loading,
   };
 }

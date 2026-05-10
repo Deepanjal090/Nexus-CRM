@@ -14,11 +14,10 @@ export default function TasksPage() {
     teamMembers,
     activeView,
     setActiveView,
-    newModalOpen,
-    setNewModalOpen,
     handleCreateTask,
   } = useTasksController();
 
+  const [newModalOpen, setNewModalOpen] = useState<{open: boolean, defaultStage?: string}>({open: false});
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
   return (

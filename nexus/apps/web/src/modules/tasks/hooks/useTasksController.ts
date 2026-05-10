@@ -30,10 +30,13 @@ export function useTasksController() {
           api.get(`/workspaces/${workspaceSlug}/tasks`),
           api.get(`/workspaces/${workspaceSlug}/dashboard/team`),
         ]);
-        setTasks(tasksRes.data);
-        setTeamMembers(teamRes.data.map((m: any) => ({
+        const tasksData = tasksRes.data?.data || tasksRes.data || [];
+        const teamData = teamRes.data?.data || teamRes.data || [];
+        
+        setTasks(tasksData);
+        setTeamMembers(teamData.map((m: any) => ({
           id: m.userId,
-          name: m.user.name,
+          name: m.user?.name || 'Unknown',
         })));
       } catch (err) {
         console.error('Failed to fetch tasks', err);
@@ -66,7 +69,8 @@ export function useTasksController() {
         status: data.stageName.toUpperCase().replace(' ', '_'),
         assigneeId: data.assigneeId || user?.id,
       });
-      setTasks([res.data, ...tasks]);
+      const taskData = res.data?.data || res.data;
+      setTasks([taskData, ...tasks]);
       return true;
     } catch (err) {
       console.error('Failed to create task', err);

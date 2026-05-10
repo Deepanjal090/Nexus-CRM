@@ -36,19 +36,33 @@ if (!(Test-Path "node_modules")) {
 }
 
 # 3. Port Cleanup
-Write-Host "🧹 Clearing ports 3000 and 4000..." -ForegroundColor Yellow
+Write-Host "[System] Ensuring ports 3000 (Web) and 4000 (API) are clear..." -ForegroundColor Yellow
 $ports = @(3000, 4000)
 foreach ($port in $ports) {
-    $processId = (Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue).OwningProcess
-    if ($processId) {
-        Write-Host "   Stopping process on port $port..." -ForegroundColor Gray
-        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+    try {
+        $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+        if ($connections) {
+            foreach ($conn in $connections) {
+                $procId = $conn.OwningProcess
+                $procName = (Get-Process -Id $procId).ProcessName
+                Write-Host "   -> Stopping $procName (PID: $procId) on port $port..." -ForegroundColor Gray
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            }
+            Start-Sleep -Seconds 1 # Wait for OS to release port
+        }
+    } catch {
+        Write-Host "   -> Warning: Could not clear port $port. It might be in use by a system service." -ForegroundColor Red
     }
 }
 
 # 3. Launch
 Write-Header "Launching Dev Server"
-Write-Host "Access NEXUS at: http://localhost:3000" -ForegroundColor Green
+$localIP = (Get-NetIPAddress | Where-Object { $_.AddressState -eq 'Preferred' -and $_.AddressFamily -eq 'IPv4' -and $_.InterfaceAlias -notlike '*Loopback*' } | Select-Object -First 1).IPAddress
+Write-Host "Access NEXUS at:" -ForegroundColor Green
+Write-Host "  Local:   http://localhost:3000" -ForegroundColor Cyan
+if ($localIP) {
+    Write-Host "  Network: http://$localIP`:3000" -ForegroundColor Cyan
+}
 Write-Host "Press Ctrl+C to stop.`n"
 
 npm run dev

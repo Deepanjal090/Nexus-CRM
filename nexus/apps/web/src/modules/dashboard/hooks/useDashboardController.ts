@@ -49,7 +49,7 @@ export function useDashboardController() {
   }, [statsData]);
 
   const revenueData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+    labels: statsData?.monthLabels || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
     datasets: [
       {
         label: 'Revenue Trend',
@@ -66,7 +66,7 @@ export function useDashboardController() {
     labels: ['To Do', 'In Progress', 'In Review', 'Done'],
     datasets: [
       {
-        data: [12, 19, 5, 28], // Static for now, can be wired via service later
+        data: statsData?.tasksData || [0, 0, 0, 0],
         backgroundColor: ['#94a3b8', '#3b82f6', '#f59e0b', '#22c55e'],
         borderWidth: 0,
         cutout: '75%',

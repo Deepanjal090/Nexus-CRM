@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { WorkspaceGuard } from '../common/guards/workspace.guard';
@@ -9,11 +9,11 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 export class TasksController {
   constructor(private svc: TasksService) {}
 
-  @Get() findAll(@Param() p: any, @Query() q: any) { return this.svc.findAll(p.workspace.id, q); }
-  @Get(':id') findOne(@Param('id') id: string, @Param() p: any) { return this.svc.findById(id, p.workspace.id); }
-  @Post() create(@Param() p: any, @CurrentUser('id') uid: string, @Body() b: any) { return this.svc.create(p.workspace.id, uid, b); }
-  @Patch(':id') update(@Param('id') id: string, @Param() p: any, @Body() b: any) { return this.svc.update(id, p.workspace.id, b); }
-  @Delete(':id') delete(@Param('id') id: string, @Param() p: any) { return this.svc.delete(id, p.workspace.id); }
+  @Get() findAll(@Req() req: any, @Query() q: any) { return this.svc.findAll(req.workspace.id, q); }
+  @Get(':id') findOne(@Param('id') id: string, @Req() req: any) { return this.svc.findById(id, req.workspace.id); }
+  @Post() create(@Req() req: any, @CurrentUser('id') uid: string, @Body() b: any) { return this.svc.create(req.workspace.id, uid, b); }
+  @Patch(':id') update(@Param('id') id: string, @Req() req: any, @Body() b: any) { return this.svc.update(id, req.workspace.id, b); }
+  @Delete(':id') delete(@Param('id') id: string, @Req() req: any) { return this.svc.delete(id, req.workspace.id); }
 
   @Post(':id/time-logs')
   addTimeLog(@Param('id') id: string, @CurrentUser('id') uid: string, @Body() b: any) { return this.svc.addTimeLog(id, uid, b); }

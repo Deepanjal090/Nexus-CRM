@@ -4,12 +4,12 @@ import { ApiService } from '@/lib/api-service';
 export class DashboardService extends ApiService {
   async getStats() {
     const res = await api.get(`${this.baseUrl}/dashboard/stats`);
-    return res.data.data;
+    return res.data?.data || res.data;
   }
 
   async getTeam() {
     const res = await api.get(`${this.baseUrl}/dashboard/team`);
-    return res.data.data;
+    return res.data?.data || res.data;
   }
 
   // Potential for future wiring

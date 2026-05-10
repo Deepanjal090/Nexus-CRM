@@ -20,11 +20,10 @@ export default function DealsPage() {
     teamMembers,
     search,
     setSearch,
-    newDealModalOpen,
-    setNewDealModalOpen,
-    handleExport,
     handleCreateDeal,
   } = useDealsController();
+
+  const [newDealModalOpen, setNewDealModalOpen] = useState<{open: boolean, defaultStage?: string}>({open: false});
 
   const [selectedDeal, setSelectedDeal] = useState<any | null>(null);
 

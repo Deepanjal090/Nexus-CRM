@@ -20,7 +20,14 @@ NEXUS is a highly-scalable, self-hosted, all-in-one business workspace. Designed
 ### **Platform Capabilities**
 - **Real-Time Engine:** Built-in WebSocket infrastructure for live chat and instantaneous notifications.
 - **Dynamic Theming:** A polished, "Bright Professional" UI optimized for readability and extended use.
+- **Resilient Connectivity:** Integrated health-check sidecars gracefully manage server connectivity drops with automatic background reconnections and UI state preservation.
 - **Zero-Dependency Local Dev:** Capable of running locally via SQLite for rapid development and demonstration, with seamless production scaling to PostgreSQL.
+
+### **Current Development Status**
+- ✅ **Authentication:** Fully stateful JWT persistence.
+- ✅ **CRM & Tasks:** Connected natively to the backend Prisma ORM via NestJS REST APIs. Dynamic Kanban stages and pipelines.
+- ✅ **Dashboard Analytics:** Live trailing 9-month revenue aggregation and dynamic task status distribution via Doughnut and Line charts.
+- 🚧 **Communications:** VoIP (Twilio) and Webmail integration placeholders are staged.
 
 ---
 
